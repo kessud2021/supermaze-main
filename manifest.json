@@ -1,0 +1,62 @@
+{
+  "name": "SuperMaze",
+  "short_name": "SuperMaze",
+  "description": "Daily maze challenges, leaderboards, and progression. Play online or offline!",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2d2d2d",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%232d2d2d' width='192' height='192'/><rect fill='%23e74c3c' x='40' y='40' width='32' height='32' rx='4'/><rect fill='%232ecc71' x='120' y='120' width='32' height='32' rx='4'/><path fill='%23333' stroke='%23fff' stroke-width='2' d='M72 40 L72 56 L88 56 L88 72 L104 72 L104 88 L72 88 L72 104 L88 104 L88 120 L120 120'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%232d2d2d' width='512' height='512'/><rect fill='%23e74c3c' x='104' y='104' width='80' height='80' rx='8'/><rect fill='%232ecc71' x='328' y='328' width='80' height='80' rx='8'/><path fill='%23333' stroke='%23fff' stroke-width='6' d='M184 104 L184 144 L224 144 L224 184 L264 184 L264 224 L184 224 L184 264 L224 264 L224 328 L328 328'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 720'><rect fill='%23f5f5f5' width='540' height='720'/><text x='270' y='100' font-size='36' font-weight='bold' text-anchor='middle' fill='%23333'>SuperMaze</text><text x='270' y='150' font-size='18' text-anchor='middle' fill='%23666'>Daily Challenge</text><rect fill='%23e8e8e8' x='30' y='200' width='480' height='480' rx='8'/><text x='270' y='500' font-size='16' text-anchor='middle' fill='%23999'>Play offline anytime</text></svg>",
+      "sizes": "540x720",
+      "type": "image/svg+xml",
+      "form_factor": "narrow"
+    }
+  ],
+  "categories": ["games", "puzzle"],
+  "shortcuts": [
+    {
+      "name": "Daily Challenge",
+      "short_name": "Daily",
+      "description": "Start today's maze challenge",
+      "url": "/?mode=daily",
+      "icons": [
+        {
+          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect fill='%23e74c3c' width='96' height='96'/><text x='48' y='60' font-size='48' font-weight='bold' text-anchor='middle' fill='%23fff'>📅</text></svg>",
+          "sizes": "96x96",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "Play Random Maze",
+      "short_name": "Random",
+      "description": "Play a random maze",
+      "url": "/?mode=random",
+      "icons": [
+        {
+          "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 96'><rect fill='%232ecc71' width='96' height='96'/><text x='48' y='60' font-size='48' font-weight='bold' text-anchor='middle' fill='%23fff'>🎲</text></svg>",
+          "sizes": "96x96",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ]
+}
