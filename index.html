@@ -1,0 +1,1614 @@
+<!-- SuperMaze v1.3.1 - Token-Based Multiplayer + Singleplayer -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title id="page-title">SuperMaze v1.3.1</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: "Segoe UI", sans-serif;
+      }
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        transition: background 0.3s ease;
+        min-height: 100vh;
+      }
+      .connect-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+      }
+      .connect-card {
+        width: 380px;
+        border-radius: 14px;
+        box-shadow: 0 12px 36px rgba(2, 6, 23, 0.36);
+        backdrop-filter: blur(8px);
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        position: relative;
+      }
+      .maze-container {
+        width: 100%;
+        height: 100vh;
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: #f5f5f5;
+        overflow: hidden;
+      }
+      .maze-grid {
+        display: grid;
+        gap: 2px;
+      }
+      .cell {
+        width: 25px;
+        height: 25px;
+        border-radius: 6px;
+        background: #fff;
+        transition: background 0.06s;
+        box-sizing: border-box;
+      }
+      .cell.wall {
+        background: #333;
+      }
+      .cell.player {
+        background: #e74c3c;
+        box-shadow: 0 0 6px rgba(231, 76, 60, 0.7) inset;
+      }
+      .cell.end {
+        background: #2ecc71;
+        box-shadow: 0 0 6px rgba(46, 204, 113, 0.6) inset;
+      }
+      .cell.ghost {
+        background: rgba(0, 200, 255, 0.6);
+      }
+      .keystrokes {
+        position: absolute;
+        bottom: 18px;
+        left: 18px;
+        display: flex;
+        gap: 6px;
+        flex-direction: column;
+        color: #fff;
+        font-weight: 700;
+        text-shadow: 0 0 5px #000;
+      }
+      .keystrokes span {
+        width: 34px;
+        height: 34px;
+        text-align: center;
+        line-height: 34px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.9);
+        background: rgba(0, 0, 0, 0.55);
+      }
+      .stopwatch {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.7);
+        color: #fff;
+        font-size: 18px;
+      }
+      .back-btn {
+        position: absolute;
+        top: 14px;
+        left: 14px;
+      }
+      @media (max-width: 480px) {
+        .connect-card {
+          width: 92%;
+        }
+        .connect-card.small {
+          width: 92%;
+        }
+      }
+      .title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .title-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        position: relative;
+      }
+      .logout-btn-inline {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .logout-btn-inline:hover {
+        background: rgba(239, 68, 68, 0.3);
+        border-color: rgba(239, 68, 68, 0.6);
+        transform: translateY(-1px);
+      }
+      .site-title {
+        font-size: 20px;
+        font-weight: 700;
+        margin: 0;
+      }
+      .status-pill {
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: 13px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .status-online {
+        background: rgba(16, 185, 129, 0.14);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.22);
+      }
+      .status-offline {
+        background: rgba(239, 68, 68, 0.12);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.18);
+      }
+      .join-card .form-control {
+        background: rgba(255, 255, 255, 0.04);
+        color: inherit;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .join-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .btn-ghost {
+        background: rgba(255, 255, 255, 0.03);
+        color: inherit;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      /* --- THEME: LIGHT --- */
+      body.theme-light {
+        background: linear-gradient(135deg, #f5f5f5, #e8e8e8);
+        color: #333;
+      }
+      body.theme-light .connect-card {
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        color: #333;
+      }
+      body.theme-light .site-title {
+        color: #333;
+      }
+
+      /* --- THEME: DARK --- */
+      body.theme-dark {
+        background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+        color: #e0e0e0;
+      }
+      body.theme-dark .connect-card {
+        background: rgba(30, 30, 30, 0.95);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #e0e0e0;
+      }
+      body.theme-dark .site-title {
+        color: #e0e0e0;
+      }
+      body.theme-dark .form-select,
+      body.theme-dark .form-control {
+        background-color: #2d2d2d;
+        color: #e0e0e0;
+        border-color: #444;
+      }
+
+      /* --- THEME: BLUE --- */
+      body.theme-blue {
+        background: linear-gradient(135deg, #001f3f, #003d99);
+        color: #e0f2ff;
+      }
+      body.theme-blue .connect-card {
+        background: rgba(0, 31, 63, 0.9);
+        border: 1px solid rgba(0, 150, 255, 0.3);
+        color: #e0f2ff;
+      }
+      body.theme-blue .site-title {
+        color: #00d4ff;
+      }
+
+      /* --- THEME: GREEN --- */
+      body.theme-green {
+        background: linear-gradient(135deg, #1b3d1b, #2d5a2d);
+        color: #d0f0d0;
+      }
+      body.theme-green .connect-card {
+        background: rgba(27, 61, 27, 0.9);
+        border: 1px solid rgba(76, 175, 80, 0.3);
+        color: #d0f0d0;
+      }
+      body.theme-green .site-title {
+        color: #4caf50;
+      }
+
+      /* --- THEME: PINK --- */
+      body.theme-pink {
+        background: linear-gradient(135deg, #3d1a2e, #5a2d45);
+        color: #f0d0e8;
+      }
+      body.theme-pink .connect-card {
+        background: rgba(61, 26, 46, 0.9);
+        border: 1px solid rgba(255, 105, 180, 0.3);
+        color: #f0d0e8;
+      }
+      body.theme-pink .site-title {
+        color: #ff69b4;
+      }
+
+      /* --- THEME: RED --- */
+      body.theme-red {
+        background: linear-gradient(135deg, #3d1a1a, #5a2d2d);
+        color: #f0d0d0;
+      }
+      body.theme-red .connect-card {
+        background: rgba(61, 26, 26, 0.9);
+        border: 1px solid rgba(255, 76, 76, 0.3);
+        color: #f0d0d0;
+      }
+      body.theme-red .site-title {
+        color: #ff4444;
+      }
+
+      /* Shared theme styles */
+      body .form-select,
+      body .form-control {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: inherit;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      body .btn {
+        transition: all 0.2s ease;
+      }
+
+      /* --- CUSTOMIZATION MODAL --- */
+      .customize-modal {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 50000;
+        padding: 20px;
+      }
+      .customize-content {
+        background: rgba(40, 40, 50, 0.95);
+        border-radius: 16px;
+        padding: 30px;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+        color: #fff;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+      }
+      .customize-title {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        color: #00d4ff;
+      }
+      .customize-group {
+        margin-bottom: 18px;
+      }
+      .customize-group label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #b0b0c0;
+      }
+      .customize-group input[type="text"],
+      .customize-group input[type="color"],
+      .customize-group textarea {
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(0, 0, 0, 0.3);
+        color: #fff;
+        font-family: inherit;
+        box-sizing: border-box;
+      }
+      .customize-group input[type="color"] {
+        height: 45px;
+        cursor: pointer;
+      }
+      .customize-group textarea {
+        resize: vertical;
+        min-height: 60px;
+        font-size: 12px;
+      }
+      .customize-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 25px;
+      }
+      .customize-buttons button {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .customize-buttons .save-btn {
+        background: #00d4ff;
+        color: #000;
+      }
+      .customize-buttons .save-btn:hover {
+        background: #00f0ff;
+        transform: translateY(-2px);
+      }
+      .customize-buttons .close-btn {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      .customize-buttons .close-btn:hover {
+        background: rgba(255, 255, 255, 0.15);
+      }
+      .color-preview {
+        display: inline-block;
+        width: 30px;
+        height: 30px;
+        border-radius: 6px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        vertical-align: middle;
+        margin-left: 10px;
+      }
+
+      /* --- SETTINGS MODAL --- */
+      .settings-modal {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 50000;
+        padding: 20px;
+      }
+      .settings-content {
+        background: rgba(40, 40, 50, 0.95);
+        border-radius: 16px;
+        padding: 30px;
+        max-width: 600px;
+        max-height: 85vh;
+        overflow-y: auto;
+        color: #fff;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+      }
+      .settings-title {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        color: #fbbf24;
+      }
+      .settings-group {
+        margin-bottom: 20px;
+      }
+      .settings-group label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #b0b0c0;
+      }
+      .settings-group select,
+      .settings-group textarea {
+        width: 100%;
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(0, 0, 0, 0.3);
+        color: #fff;
+        font-family: "Courier New", monospace;
+        box-sizing: border-box;
+      }
+      .settings-group textarea {
+        resize: vertical;
+        min-height: 200px;
+        font-size: 12px;
+      }
+      .settings-group select {
+        cursor: pointer;
+      }
+      .settings-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 25px;
+      }
+      .settings-buttons button {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .settings-buttons .save-btn {
+        background: #fbbf24;
+        color: #000;
+      }
+      .settings-buttons .save-btn:hover {
+        background: #fcd34d;
+        transform: translateY(-2px);
+      }
+      .settings-buttons .close-btn {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      .settings-buttons .close-btn:hover {
+        background: rgba(255, 255, 255, 0.15);
+      }
+      .settings-info {
+        font-size: 12px;
+        color: #999;
+        margin-top: 6px;
+      }
+      .code-editor-wrapper {
+        display: flex;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        overflow: hidden;
+        background: rgba(0, 0, 0, 0.3);
+      }
+      .code-line-numbers {
+        background: rgba(0, 0, 0, 0.5);
+        color: #666;
+        padding: 10px 8px;
+        text-align: right;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        border-right: 1px solid rgba(255, 255, 255, 0.1);
+        user-select: none;
+        min-width: 40px;
+      }
+      .code-editor {
+        flex: 1;
+        padding: 10px;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        background: rgba(0, 0, 0, 0.3);
+        color: #fff;
+        border: none;
+        outline: none;
+        line-height: 1.5;
+        resize: none;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body class="theme-light">
+    <!-- USERNAME SCREEN -->
+    <div id="username-screen" class="connect-container">
+      <div class="card connect-card text-center p-0">
+        <div class="card-body">
+          <div class="title-row mb-2">
+            <div class="title-left">
+              <h4 class="site-title">🌀 SuperMaze</h4>
+            </div>
+            <div>
+              <span id="global-status" class="status-pill status-offline"
+                >🔌 Offline</span
+              >
+            </div>
+          </div>
+          <div class="mb-3"><small>Enter your username to continue</small></div>
+          <input
+            id="username-input"
+            class="form-control mb-3"
+            placeholder="Your username"
+          />
+          <button id="continue-btn" class="btn btn-primary w-100">
+            Continue
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONNECT SCREEN -->
+    <div id="connect-screen" class="connect-container d-none">
+      <div class="card connect-card p-0">
+        <div class="card-body">
+          <div class="title-row mb-2">
+            <div class="title-left">
+              <h4 class="site-title">🌀 SuperMaze</h4>
+              <small class="text-muted ms-2">v1.3.1</small>
+            </div>
+          </div>
+
+          <div class="text-center mb-3">
+            <div style="display: flex; gap: 8px; margin-bottom: 8px">
+              <button id="single-btn" class="btn btn-success" style="flex: 1">
+                Singleplayer
+              </button>
+              <button
+                id="logout-btn"
+                class="logout-btn-inline"
+                title="Sign out"
+              >
+                🚪 Logout
+              </button>
+            </div>
+            <button
+              id="replay-list-btn"
+              class="btn btn-outline-primary w-100 mb-2 mt-2"
+            >
+              Saved Replays
+            </button>
+            <div style="display: flex; gap: 8px; margin-bottom: 12px">
+              <select id="theme-select" class="form-select" style="flex: 1">
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="blue">Blue</option>
+                <option value="green">Green</option>
+                <option value="pink">Pink</option>
+                <option value="red">Red</option>
+              </select>
+              <button
+                id="customize-btn"
+                class="btn btn-outline-info"
+                title="Customize theme"
+              >
+                ➕
+              </button>
+            </div>
+            <div id="xp-info" class="mb-2 text-muted small"></div>
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+              <button
+                id="leaderboard-btn"
+                class="btn btn-outline-secondary"
+                style="flex: 1"
+              >
+                Leaderboard
+              </button>
+              <button
+                id="settings-btn"
+                class="btn btn-outline-warning"
+                title="Settings"
+              >
+                ⚙️
+              </button>
+            </div>
+            <button
+              id="docs-btn"
+              class="btn btn-outline-info w-100"
+              title="View documentation"
+            >
+              Docs
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAZE SCREEN -->
+    <div id="maze-screen" class="maze-container d-none">
+      <div id="maze-grid" class="maze-grid" aria-hidden="false"></div>
+      <div id="keystrokes" class="keystrokes"></div>
+      <div id="stopwatch" class="stopwatch">00:00.000</div>
+      <button id="back-btn" class="btn btn-secondary back-btn">Exit</button>
+    </div>
+
+    <script>
+      /* ---------------- DOM ---------------- */
+      const usernameScreen = document.getElementById("username-screen");
+      const usernameInput = document.getElementById("username-input");
+      const continueBtn = document.getElementById("continue-btn");
+      const connectScreen = document.getElementById("connect-screen");
+      const logoutBtn = document.getElementById("logout-btn");
+      const mazeScreen = document.getElementById("maze-screen");
+      const mazeGrid = document.getElementById("maze-grid");
+      const themeSelect = document.getElementById("theme-select");
+      const customizeBtn = document.getElementById("customize-btn");
+      const xpInfo = document.getElementById("xp-info");
+      const singleBtn = document.getElementById("single-btn");
+      const replayListBtn = document.getElementById("replay-list-btn");
+      const leaderboardBtn = document.getElementById("leaderboard-btn");
+      const settingsBtn = document.getElementById("settings-btn");
+      const docsBtn = document.getElementById("docs-btn");
+      const backBtn = document.getElementById("back-btn");
+      const keystrokesDiv = document.getElementById("keystrokes");
+      const stopwatchDisplay = document.getElementById("stopwatch");
+      const serverStatusPill = document.getElementById("server-status-pill");
+      const globalStatus = document.getElementById("global-status");
+
+      /* ---------------- Game Settings ---------------- */
+      // Load game settings from localStorage
+      let gameSettings = {
+        difficulty: "medium",
+        graphics: "mid",
+      };
+
+      const savedSettings = localStorage.getItem("maze_game_settings");
+      if (savedSettings) {
+        const parsed = sanitizeJSON(savedSettings);
+        if (parsed && parsed.difficulty && parsed.graphics) {
+          gameSettings = parsed;
+        }
+      }
+
+      let size = 21,
+        cellPx = 25;
+      let maze = [],
+        player = { x: 1, y: 1 },
+        endCell = { x: size - 2, y: size - 2 };
+      let moving = false,
+        gameWon = false,
+        startTime = null,
+        timerInterval = null;
+      let moves = [],
+        replayMode = false;
+      let xp = parseInt(localStorage.getItem("maze_xp")) || 0;
+      let level = Math.floor(xp / 100);
+      // Load leaderboard safely (validate JSON)
+      const leaderboardRaw = localStorage.getItem("maze_leaderboard") || "[]";
+      let leaderboard = [];
+      try {
+        const parsed = JSON.parse(leaderboardRaw);
+        if (Array.isArray(parsed)) {
+          leaderboard = parsed.filter((entry) => {
+            return (
+              entry &&
+              typeof entry.username === "string" &&
+              typeof entry.time === "number" &&
+              entry.time > 0
+            );
+          });
+        }
+      } catch {
+        leaderboard = [];
+        localStorage.removeItem("maze_leaderboard");
+      }
+      // localStorage-based auth: generate token on first run
+      let authToken = localStorage.getItem("maze_auth_token");
+      if (!authToken) {
+        authToken =
+          "user_" + Math.random().toString(36).slice(2, 9) + "_" + Date.now();
+        localStorage.setItem("maze_auth_token", authToken);
+      }
+
+      /* ---------------- Helpers ---------------- */
+      function clone2D(arr) {
+        return arr.map((r) => r.slice());
+      }
+      function now() {
+        return performance.now();
+      }
+      function formatTime(ms) {
+        if (!ms) return "00:00.000";
+        const s = ms / 1000,
+          m = Math.floor(s / 60),
+          sec = Math.floor(s % 60),
+          msr = Math.floor(ms % 1000);
+        return `${String(m).padStart(2, "0")}:${String(sec).padStart(
+          2,
+          "0"
+        )}.${String(msr).padStart(3, "0")}`;
+      }
+
+      /* ---------------- Security: Sanitize Input ---------------- */
+      function sanitizeInput(input) {
+        // Remove dangerous characters and encode HTML entities
+        const div = document.createElement("div");
+        div.textContent = String(input);
+        return div.innerHTML;
+      }
+      function sanitizeUsername(name) {
+        // Only allow alphanumeric, spaces, hyphens, underscores, and emoji
+        return String(name)
+          .replace(/[<>\"'&`]/g, "") // Remove HTML special chars
+          .substring(0, 32) // Max 32 chars
+          .trim();
+      }
+      function sanitizeUrl(url) {
+        // Validate URL is safe (no javascript: protocol)
+        if (!url) return "";
+        const trimmed = String(url).trim();
+        if (trimmed.toLowerCase().startsWith("javascript:")) return "";
+        if (trimmed.toLowerCase().startsWith("data:")) return "";
+        try {
+          new URL(trimmed);
+          return trimmed;
+        } catch {
+          return ""; // Invalid URL
+        }
+      }
+      function sanitizeColor(color) {
+        // Only allow hex colors
+        const match = String(color).match(/^#([0-9a-f]{6}|[0-9a-f]{3})$/i);
+        return match ? match[0] : "#000000";
+      }
+      function sanitizeJSON(jsonString) {
+        // Safely parse JSON and validate structure
+        try {
+          const parsed = JSON.parse(jsonString);
+          if (typeof parsed !== "object") return null;
+          return parsed;
+        } catch {
+          return null;
+        }
+      }
+
+      /* ---------------- XP ---------------- */
+      function updateXPDisplay() {
+        xpInfo.textContent = `${
+          username || "Guest"
+        } | Level ${level} | XP: ${xp}`;
+      }
+
+      /* ---------------- Auth (localStorage-based) ---------------- */
+      function getAuthToken() {
+        return authToken;
+      }
+
+      /* ---------------- Logout Handler ---------------- */
+      function logout() {
+        if (confirm("Are you sure you want to log out?")) {
+          localStorage.removeItem("maze_username");
+          username = "";
+          usernameInput.value = "";
+          connectScreen.classList.add("d-none");
+          mazeScreen.classList.add("d-none");
+          usernameScreen.classList.remove("d-none");
+          resetGame();
+        }
+      }
+
+      /* ---------------- Username ---------------- */
+      let username = localStorage.getItem("maze_username") || "";
+      // Sanitize on load
+      if (username) {
+        username = sanitizeUsername(username);
+        usernameScreen.classList.add("d-none");
+        connectScreen.classList.remove("d-none");
+        updateXPDisplay();
+      }
+      continueBtn.onclick = () => {
+        let name = usernameInput.value.trim();
+        if (!name) return alert("Enter a username!");
+        // Sanitize before storing
+        name = sanitizeUsername(name);
+        if (!name) return alert("Username contains invalid characters!");
+        username = name;
+        localStorage.setItem("maze_username", username);
+
+        usernameScreen.classList.add("d-none");
+        connectScreen.classList.remove("d-none");
+        updateXPDisplay();
+      };
+
+      /* ---------------- Theme & Customization ---------------- */
+      // Load saved theme
+      const savedTheme = localStorage.getItem("maze_theme") || "light";
+      themeSelect.value = savedTheme;
+      document.body.className = "theme-" + savedTheme;
+
+      // Load custom theme if exists (validate JSON)
+      const customThemeRaw = localStorage.getItem("maze_custom_theme");
+      let customTheme = null;
+      if (customThemeRaw) {
+        customTheme = sanitizeJSON(customThemeRaw);
+        if (customTheme && customTheme.bg1 && customTheme.bg2) {
+          applyCustomTheme(customTheme);
+        } else {
+          localStorage.removeItem("maze_custom_theme"); // Invalid theme
+        }
+      }
+
+      function applyCustomTheme(theme) {
+        document.documentElement.style.setProperty("--custom-bg1", theme.bg1);
+        document.documentElement.style.setProperty("--custom-bg2", theme.bg2);
+        document.documentElement.style.setProperty(
+          "--custom-card-bg",
+          theme.cardBg
+        );
+        document.documentElement.style.setProperty("--custom-text", theme.text);
+        document.documentElement.style.setProperty(
+          "--custom-title",
+          theme.title
+        );
+        document.documentElement.style.setProperty(
+          "--custom-border",
+          theme.border
+        );
+
+        if (theme.bgImage) {
+          document.body.style.backgroundImage = `url('${theme.bgImage}')`;
+          document.body.style.backgroundSize = "cover";
+          document.body.style.backgroundPosition = "center";
+        } else {
+          document.body.style.background = `linear-gradient(135deg, ${theme.bg1}, ${theme.bg2})`;
+          document.body.style.backgroundImage = "none";
+        }
+
+        document.body.style.color = theme.text;
+        const cards = document.querySelectorAll(".connect-card");
+        cards.forEach((card) => {
+          card.style.background = theme.cardBg;
+          card.style.borderColor = theme.border;
+          card.style.color = theme.text;
+        });
+        const titles = document.querySelectorAll(".site-title");
+        titles.forEach((t) => (t.style.color = theme.title));
+      }
+
+      function showCustomizeModal() {
+        const custom = customTheme || {
+          bg1: "#001f3f",
+          bg2: "#003d99",
+          cardBg: "rgba(0, 31, 63, 0.9)",
+          text: "#e0f2ff",
+          title: "#00d4ff",
+          border: "rgba(0, 150, 255, 0.3)",
+          bgImage: "",
+        };
+
+        // Sanitize all inputs
+        const bg1 = sanitizeColor(custom.bg1 || "#001f3f");
+        const bg2 = sanitizeColor(custom.bg2 || "#003d99");
+        const bgImage = sanitizeUrl(custom.bgImage || "");
+        const cardBgColor = sanitizeColor(
+          custom.cardBg.match(/#[0-9a-f]{6}/i)?.[0] || "#1f1f2e"
+        );
+        const textColor = sanitizeColor(
+          custom.text.match(/#[0-9a-f]{6}/i)?.[0] || "#e0e0e0"
+        );
+        const titleColor = sanitizeColor(
+          custom.title.match(/#[0-9a-f]{6}/i)?.[0] || "#00d4ff"
+        );
+        const borderColor = sanitizeColor(
+          custom.border.match(/#[0-9a-f]{6}/i)?.[0] || "#00d4ff"
+        );
+
+        const modal = document.createElement("div");
+        modal.className = "customize-modal";
+
+        // Build content safely without innerHTML
+        const content = document.createElement("div");
+        content.className = "customize-content";
+
+        const title = document.createElement("h2");
+        title.className = "customize-title";
+        title.textContent = "🎨 Customize Theme";
+        content.appendChild(title);
+
+        // Helper to create color input group
+        const createColorGroup = (label, inputId, value) => {
+          const group = document.createElement("div");
+          group.className = "customize-group";
+          const lbl = document.createElement("label");
+          lbl.textContent = label;
+          const input = document.createElement("input");
+          input.type = "color";
+          input.id = inputId;
+          input.value = value;
+          group.appendChild(lbl);
+          group.appendChild(input);
+          return group;
+        };
+
+        // Helper to create text input group
+        const createTextGroup = (
+          label,
+          inputId,
+          value,
+          placeholder,
+          helpText
+        ) => {
+          const group = document.createElement("div");
+          group.className = "customize-group";
+          const lbl = document.createElement("label");
+          lbl.textContent = label;
+          const input = document.createElement("input");
+          input.type = "text";
+          input.id = inputId;
+          input.value = value;
+          input.placeholder = placeholder;
+          group.appendChild(lbl);
+          group.appendChild(input);
+          if (helpText) {
+            const help = document.createElement("small");
+            help.style.color = "#999";
+            help.style.display = "block";
+            help.style.marginTop = "6px";
+            help.textContent = helpText;
+            group.appendChild(help);
+          }
+          return group;
+        };
+
+        content.appendChild(
+          createColorGroup(
+            "Background Color 1 (Gradient Start)",
+            "custom-bg1",
+            bg1
+          )
+        );
+        content.appendChild(
+          createColorGroup(
+            "Background Color 2 (Gradient End)",
+            "custom-bg2",
+            bg2
+          )
+        );
+        content.appendChild(
+          createTextGroup(
+            "Background Image URL (optional)",
+            "custom-bg-image",
+            bgImage,
+            "https://example.com/image.jpg",
+            "Leave empty to use gradient"
+          )
+        );
+        content.appendChild(
+          createColorGroup(
+            "Card Background Color",
+            "custom-card-bg",
+            cardBgColor
+          )
+        );
+        content.appendChild(
+          createColorGroup("Text Color", "custom-text", textColor)
+        );
+        content.appendChild(
+          createColorGroup("Title Color", "custom-title", titleColor)
+        );
+        content.appendChild(
+          createColorGroup("Border Color", "custom-border", borderColor)
+        );
+
+        const btnGroup = document.createElement("div");
+        btnGroup.className = "customize-buttons";
+        const saveBtnEl = document.createElement("button");
+        saveBtnEl.className = "save-btn";
+        saveBtnEl.textContent = "💾 Save Custom Theme";
+        const closeBtnEl = document.createElement("button");
+        closeBtnEl.className = "close-btn";
+        closeBtnEl.textContent = "Cancel";
+        btnGroup.appendChild(saveBtnEl);
+        btnGroup.appendChild(closeBtnEl);
+        content.appendChild(btnGroup);
+
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+
+        const saveBtn = modal.querySelector(".save-btn");
+        const closeBtn = modal.querySelector(".close-btn");
+
+        saveBtn.onclick = () => {
+          const customData = {
+            bg1: sanitizeColor(document.getElementById("custom-bg1").value),
+            bg2: sanitizeColor(document.getElementById("custom-bg2").value),
+            cardBg: sanitizeColor(
+              document.getElementById("custom-card-bg").value
+            ),
+            text: sanitizeColor(document.getElementById("custom-text").value),
+            title: sanitizeColor(document.getElementById("custom-title").value),
+            border: sanitizeColor(
+              document.getElementById("custom-border").value
+            ),
+            bgImage: sanitizeUrl(
+              document.getElementById("custom-bg-image").value
+            ),
+          };
+          localStorage.setItem("maze_custom_theme", JSON.stringify(customData));
+          applyCustomTheme(customData);
+          modal.remove();
+          alert("✅ Custom theme saved!");
+        };
+
+        closeBtn.onclick = () => modal.remove();
+      }
+
+      customizeBtn.onclick = showCustomizeModal;
+
+      themeSelect.onchange = () => {
+        const theme = themeSelect.value;
+        document.body.className = "theme-" + theme;
+        localStorage.setItem("maze_theme", theme);
+      };
+
+      /* ---------------- Maze Generator ---------------- */
+      function initWallGrid() {
+        maze = new Array(size);
+        for (let y = 0; y < size; y++) maze[y] = new Array(size).fill(1);
+      }
+      function carveMaze() {
+        initWallGrid();
+        const stack = [];
+        const start = { x: 1, y: 1 };
+        maze[start.y][start.x] = 0;
+        stack.push(start);
+        const dirs = [
+          { dx: 0, dy: -2 },
+          { dx: 2, dy: 0 },
+          { dx: 0, dy: 2 },
+          { dx: -2, dy: 0 },
+        ];
+        while (stack.length) {
+          const cur = stack[stack.length - 1];
+          const neighbors = [];
+          for (const d of dirs) {
+            const nx = cur.x + d.dx,
+              ny = cur.y + d.dy;
+            if (
+              ny > 0 &&
+              ny < size - 1 &&
+              nx > 0 &&
+              nx < size - 1 &&
+              maze[ny][nx] === 1
+            )
+              neighbors.push({ x: nx, y: ny, via: d });
+          }
+          if (neighbors.length === 0) stack.pop();
+          else {
+            const n = neighbors[Math.floor(Math.random() * neighbors.length)];
+            maze[cur.y + n.via.dy / 2][cur.x + n.via.dx / 2] = 0;
+            maze[n.y][n.x] = 0;
+            stack.push({ x: n.x, y: n.y });
+          }
+        }
+      }
+      function randomEmpty() {
+        let attempts = 0;
+        while (attempts++ < 10000) {
+          const x = 1 + Math.floor(Math.random() * (size - 2));
+          const y = 1 + Math.floor(Math.random() * (size - 2));
+          if (maze[y][x] === 0) return { x, y };
+        }
+        return { x: 1, y: 1 };
+      }
+      function placePlayerAndEnd() {
+        player = randomEmpty();
+        endCell = randomEmpty();
+        let tries = 0;
+        while (
+          Math.abs(player.x - endCell.x) + Math.abs(player.y - endCell.y) <
+            Math.floor(size / 2) &&
+          tries++ < 2000
+        )
+          endCell = randomEmpty();
+        console.log("Player:", player, "End:", endCell);
+      }
+      function generateMaze() {
+        carveMaze();
+        placePlayerAndEnd();
+      }
+
+      /* ---------------- Render ---------------- */
+      function renderMaze(ghostPos = null) {
+        mazeGrid.innerHTML = "";
+        mazeGrid.style.gridTemplateColumns = `repeat(${size}, ${cellPx}px)`;
+        mazeGrid.style.gridTemplateRows = `repeat(${size}, ${cellPx}px)`;
+        const frag = document.createDocumentFragment();
+        for (let y = 0; y < size; y++) {
+          for (let x = 0; x < size; x++) {
+            const d = document.createElement("div");
+            d.className = "cell";
+            if (maze[y][x] === 1) d.classList.add("wall");
+            if (
+              x === player.x &&
+              y === player.y &&
+              !(ghostPos && ghostPos.x === x && ghostPos.y === y)
+            )
+              d.classList.add("player");
+            if (x === endCell.x && y === endCell.y) d.classList.add("end");
+            if (ghostPos && ghostPos.x === x && ghostPos.y === y)
+              d.classList.add("ghost");
+            frag.appendChild(d);
+          }
+        }
+        mazeGrid.appendChild(frag);
+      }
+
+      /* ---------------- Movement ---------------- */
+      const keys = {
+        w: false,
+        a: false,
+        s: false,
+        d: false,
+        ArrowUp: false,
+        ArrowDown: false,
+        ArrowLeft: false,
+        ArrowRight: false,
+      };
+      const arrowMap = {
+        W: "ArrowUp",
+        A: "ArrowLeft",
+        S: "ArrowDown",
+        D: "ArrowRight",
+      };
+      function updateKeystrokes() {
+        const layout = ["W", "A", "S", "D"];
+        keystrokesDiv.innerHTML = "";
+        layout.forEach((k) => {
+          const span = document.createElement("span");
+          span.textContent = k;
+          const lower = k.toLowerCase(),
+            arrow = arrowMap[k];
+          if (keys[lower] || keys[arrow]) span.style.background = "limegreen";
+          keystrokesDiv.appendChild(span);
+        });
+      }
+      document.addEventListener("keydown", (e) => {
+        if (replayMode || gameWon) return;
+        if (document.activeElement.tagName === "INPUT") return;
+        const key = e.key;
+        if (
+          ![
+            "w",
+            "a",
+            "s",
+            "d",
+            "ArrowUp",
+            "ArrowDown",
+            "ArrowLeft",
+            "ArrowRight",
+          ].includes(key)
+        )
+          return;
+        e.preventDefault();
+        if (keys[key]) return;
+        keys[key] = true;
+        updateKeystrokes();
+        if (!startTime) startStopwatch();
+        let nx = player.x,
+          ny = player.y;
+        if (key === "w" || key === "ArrowUp") ny--;
+        if (key === "s" || key === "ArrowDown") ny++;
+        if (key === "a" || key === "ArrowLeft") nx--;
+        if (key === "d" || key === "ArrowRight") nx++;
+        if (maze[ny] && maze[ny][nx] === 0) {
+          player.x = nx;
+          player.y = ny;
+          const t = startTime ? Math.max(0, Math.round(now() - startTime)) : 0;
+          moves.push({ x: nx, y: ny, t });
+          renderMaze();
+          checkVictory();
+        }
+      });
+      document.addEventListener("keyup", (e) => {
+        if (
+          [
+            "w",
+            "a",
+            "s",
+            "d",
+            "ArrowUp",
+            "ArrowDown",
+            "ArrowLeft",
+            "ArrowRight",
+          ].includes(e.key)
+        ) {
+          keys[e.key] = false;
+          updateKeystrokes();
+        }
+      });
+
+      /* ---------------- Stopwatch ---------------- */
+      function startStopwatch() {
+        startTime = now();
+        stopwatchDisplay.textContent = formatTime(0);
+        timerInterval = setInterval(() => {
+          stopwatchDisplay.textContent = formatTime(
+            Math.round(now() - startTime)
+          );
+        }, 30);
+      }
+      function stopStopwatch() {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      function resetStopwatch() {
+        stopStopwatch();
+        startTime = null;
+        stopwatchDisplay.textContent = "00:00.000";
+      }
+
+      /* ---------------- Victory ---------------- */
+      function checkVictory() {
+        if (player.x === endCell.x && player.y === endCell.y && !gameWon) {
+          gameWon = true;
+          stopStopwatch();
+          const totalTime = Math.round(now() - (startTime || now()));
+          addXP(50);
+          saveRun(totalTime);
+          showVictory(totalTime);
+        }
+      }
+      function showVictory(totalTime) {
+        const overlay = document.createElement("div");
+        Object.assign(overlay.style, {
+          position: "absolute",
+          inset: "0",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          background: "rgba(0,0,0,0.8)",
+          zIndex: 9999,
+        });
+        const title = document.createElement("h1");
+        title.innerText = "🏆 VICTORY!";
+        title.style.color = "gold";
+        title.style.fontSize = "48px";
+        const timeText = document.createElement("h4");
+        timeText.innerText = `Time: ${formatTime(totalTime)}`;
+        timeText.style.color = "#fff";
+        const replayBtn = document.createElement("button");
+        replayBtn.className = "btn btn-primary mt-3";
+        replayBtn.textContent = "Replay Run";
+        replayBtn.onclick = () => {
+          overlay.remove();
+          const last = leaderboard[leaderboard.length - 1];
+          if (last) playReplay(last);
+        };
+        const menuBtn = document.createElement("button");
+        menuBtn.className = "btn btn-secondary mt-3";
+        menuBtn.textContent = "Return to Menu";
+        menuBtn.onclick = () => {
+          overlay.remove();
+          mazeScreen.classList.add("d-none");
+          connectScreen.classList.remove("d-none");
+          resetGame();
+        };
+        overlay.append(title, timeText, replayBtn, menuBtn);
+        mazeScreen.appendChild(overlay);
+      }
+
+      /* ---------------- XP & Runs ---------------- */
+      function addXP(amount) {
+        xp += amount;
+        level = Math.floor(xp / 100);
+        localStorage.setItem("maze_xp", xp);
+        updateXPDisplay();
+      }
+      function saveRun(time) {
+        const run = {
+          username: sanitizeUsername(username) || "Guest",
+          time,
+          moves: moves.slice(),
+          xp,
+          date: new Date().toISOString(),
+          mazeSnapshot: clone2D(maze),
+          startPos: { ...(moves.length ? moves[0] : player) },
+        };
+        leaderboard.push(run);
+        localStorage.setItem("maze_leaderboard", JSON.stringify(leaderboard));
+        // All data stored locally in localStorage; no server sync needed
+      }
+
+      /* ---------------- Replay Mode ---------------- */
+      function playReplay(run) {
+        gameWon = false;
+        replayMode = true;
+        maze = clone2D(run.mazeSnapshot);
+        moves = run.moves.slice();
+        player = { x: run.startPos.x || 1, y: run.startPos.y || 1 };
+
+        let moveIndex = 0;
+        resetStopwatch();
+        renderMaze();
+
+        const replayInterval = setInterval(() => {
+          if (moveIndex >= moves.length) {
+            clearInterval(replayInterval);
+            replayMode = false;
+            return;
+          }
+          const move = moves[moveIndex];
+          player.x = move.x;
+          player.y = move.y;
+          stopwatchDisplay.textContent = formatTime(move.t || 0);
+          renderMaze();
+          moveIndex++;
+        }, 100);
+      }
+
+      /* ---------------- Leaderboard Screen ---------------- */
+      function showLeaderboard() {
+        const overlay = document.createElement("div");
+        Object.assign(overlay.style, {
+          position: "fixed",
+          inset: "0",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          background: "rgba(0,0,0,0.9)",
+          zIndex: 10000,
+          overflow: "auto",
+          padding: "20px",
+        });
+
+        const title = document.createElement("h2");
+        title.innerText = "🏆 Leaderboard";
+        title.style.color = "gold";
+        title.style.marginBottom = "20px";
+
+        const list = document.createElement("ol");
+        list.style.color = "#fff";
+        list.style.textAlign = "left";
+        list.style.maxWidth = "400px";
+
+        if (leaderboard.length === 0) {
+          const emptyMsg = document.createElement("li");
+          emptyMsg.textContent = "No runs yet! Complete a maze to appear here.";
+          list.appendChild(emptyMsg);
+        } else {
+          leaderboard
+            .slice()
+            .sort((a, b) => a.time - b.time)
+            .forEach((run, idx) => {
+              const li = document.createElement("li");
+              li.textContent = `${run.username} - ${formatTime(run.time)}`;
+              li.style.marginBottom = "10px";
+              li.style.cursor = "pointer";
+              li.style.padding = "8px";
+              li.style.borderRadius = "4px";
+              li.onmouseover = () =>
+                (li.style.background = "rgba(255,255,255,0.1)");
+              li.onmouseout = () => (li.style.background = "");
+              li.onclick = () => {
+                overlay.remove();
+                playReplay(run);
+                connectScreen.classList.add("d-none");
+                mazeScreen.classList.remove("d-none");
+              };
+              list.appendChild(li);
+            });
+        }
+
+        const closeBtn = document.createElement("button");
+        closeBtn.className = "btn btn-secondary mt-3";
+        closeBtn.textContent = "Close";
+        closeBtn.onclick = () => overlay.remove();
+
+        overlay.append(title, list, closeBtn);
+        document.body.appendChild(overlay);
+      }
+
+      /* ---------------- Settings Modal with Code Editor & Line Numbers ---------------- */
+      function showSettingsModal() {
+        const modal = document.createElement("div");
+        modal.className = "settings-modal";
+
+        const content = document.createElement("div");
+        content.className = "settings-content";
+
+        const title = document.createElement("h2");
+        title.className = "settings-title";
+        title.textContent = "⚙️ Game Settings";
+        content.appendChild(title);
+
+        // Difficulty setting
+        const diffGroup = document.createElement("div");
+        diffGroup.className = "settings-group";
+        const diffLabel = document.createElement("label");
+        diffLabel.textContent = "Difficulty";
+        const diffSelect = document.createElement("select");
+        diffSelect.id = "setting-difficulty";
+        ["easy", "medium", "hard"].forEach((diff) => {
+          const opt = document.createElement("option");
+          opt.value = diff;
+          opt.textContent = diff.charAt(0).toUpperCase() + diff.slice(1);
+          if (diff === gameSettings.difficulty) opt.selected = true;
+          diffSelect.appendChild(opt);
+        });
+        diffGroup.appendChild(diffLabel);
+        diffGroup.appendChild(diffSelect);
+        content.appendChild(diffGroup);
+
+        // Graphics setting
+        const gfxGroup = document.createElement("div");
+        gfxGroup.className = "settings-group";
+        const gfxLabel = document.createElement("label");
+        gfxLabel.textContent = "Graphics Mode";
+        const gfxSelect = document.createElement("select");
+        gfxSelect.id = "setting-graphics";
+        ["low", "mid", "high", "advanced"].forEach((gfx) => {
+          const opt = document.createElement("option");
+          opt.value = gfx;
+          opt.textContent = gfx.charAt(0).toUpperCase() + gfx.slice(1);
+          if (gfx === gameSettings.graphics) opt.selected = true;
+          gfxSelect.appendChild(opt);
+        });
+        gfxGroup.appendChild(gfxLabel);
+        gfxGroup.appendChild(gfxSelect);
+        content.appendChild(gfxGroup);
+
+        // JSON Code Editor
+        const jsonGroup = document.createElement("div");
+        jsonGroup.className = "settings-group";
+        const jsonLabel = document.createElement("label");
+        jsonLabel.textContent = "Settings (JSON)";
+
+        // Code editor wrapper with line numbers
+        const editorWrapper = document.createElement("div");
+        editorWrapper.className = "code-editor-wrapper";
+        editorWrapper.style.height = "250px";
+
+        const lineNumbers = document.createElement("div");
+        lineNumbers.className = "code-line-numbers";
+        lineNumbers.id = "line-numbers";
+
+        const codeEditor = document.createElement("textarea");
+        codeEditor.className = "code-editor";
+        codeEditor.id = "code-editor";
+        codeEditor.value = JSON.stringify(gameSettings, null, 2);
+        codeEditor.spellcheck = false;
+
+        editorWrapper.appendChild(lineNumbers);
+        editorWrapper.appendChild(codeEditor);
+
+        jsonGroup.appendChild(jsonLabel);
+        jsonGroup.appendChild(editorWrapper);
+        const jsonInfo = document.createElement("div");
+        jsonInfo.className = "settings-info";
+        jsonInfo.textContent = "Edit JSON directly or use dropdowns above";
+        jsonGroup.appendChild(jsonInfo);
+        content.appendChild(jsonGroup);
+
+        // Buttons
+        const btnGroup = document.createElement("div");
+        btnGroup.className = "settings-buttons";
+        const saveBtn = document.createElement("button");
+        saveBtn.className = "save-btn";
+        saveBtn.textContent = "💾 Save & Exit";
+        const closeBtn = document.createElement("button");
+        closeBtn.className = "close-btn";
+        closeBtn.textContent = "Cancel";
+        btnGroup.appendChild(saveBtn);
+        btnGroup.appendChild(closeBtn);
+        content.appendChild(btnGroup);
+
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+
+        // Update line numbers function
+        const updateLineNumbers = () => {
+          const lines = codeEditor.value.split("\n").length;
+          lineNumbers.innerHTML = Array.from(
+            { length: lines },
+            (_, i) => i + 1
+          ).join("<br>");
+        };
+
+        // Initial line numbers
+        updateLineNumbers();
+
+        // Update line numbers on input
+        codeEditor.addEventListener("input", updateLineNumbers);
+        codeEditor.addEventListener("scroll", () => {
+          lineNumbers.scrollTop = codeEditor.scrollTop;
+        });
+
+        // Sync dropdowns to editor
+        diffSelect.onchange = () => {
+          try {
+            const current = JSON.parse(codeEditor.value);
+            current.difficulty = diffSelect.value;
+            codeEditor.value = JSON.stringify(current, null, 2);
+            updateLineNumbers();
+          } catch (e) {}
+        };
+
+        gfxSelect.onchange = () => {
+          try {
+            const current = JSON.parse(codeEditor.value);
+            current.graphics = gfxSelect.value;
+            codeEditor.value = JSON.stringify(current, null, 2);
+            updateLineNumbers();
+          } catch (e) {}
+        };
+
+        // Save handler - saves and exits
+        saveBtn.onclick = () => {
+          try {
+            const settings = JSON.parse(codeEditor.value);
+            if (settings.difficulty && settings.graphics) {
+              gameSettings = settings;
+              localStorage.setItem(
+                "maze_game_settings",
+                JSON.stringify(settings)
+              );
+              modal.remove();
+              alert("✅ Settings saved!");
+            } else {
+              alert(
+                "❌ Invalid settings! Need 'difficulty' and 'graphics' fields."
+              );
+            }
+          } catch (e) {
+            alert("❌ Invalid JSON: " + e.message);
+          }
+        };
+
+        closeBtn.onclick = () => modal.remove();
+      }
+
+      /* ---------------- Reset ---------------- */
+      function resetGame() {
+        generateMaze();
+        renderMaze();
+        moves = [];
+        gameWon = false;
+        replayMode = false;
+        resetStopwatch();
+      }
+
+      /* ---------------- Initialize ---------------- */
+      generateMaze();
+      renderMaze();
+
+      /* ---------------- Button Handlers ---------------- */
+      singleBtn.onclick = () => {
+        connectScreen.classList.add("d-none");
+        mazeScreen.classList.remove("d-none");
+        resetGame();
+      };
+
+      replayListBtn.onclick = () => {
+        showLeaderboard();
+      };
+
+      leaderboardBtn.onclick = () => {
+        showLeaderboard();
+      };
+
+      settingsBtn.onclick = () => {
+        showSettingsModal();
+      };
+
+      docsBtn.onclick = () => {
+        window.open("../../docs/site/index.html", "_blank");
+      };
+
+      backBtn.onclick = () => {
+        mazeScreen.classList.add("d-none");
+        connectScreen.classList.remove("d-none");
+        resetGame();
+      };
+
+      logoutBtn.onclick = logout;
+    </script>
+  </body>
+</html>
