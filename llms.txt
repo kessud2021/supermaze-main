@@ -1,0 +1,583 @@
+================================================================================
+                         SUPERMAZE PROJECT OVERVIEW
+================================================================================
+
+SuperMaze is a multiplayer web-based maze game platform with an integrated 
+scripting system, GUI builder, and Lua-to-JavaScript transpiler. It allows 
+real-time collaboration, custom game logic, and dynamic UI creation.
+
+================================================================================
+                              QUICK START
+================================================================================
+
+1. Install dependencies: npm install
+2. Start server: node server/server.js
+3. Access game: http://localhost:3000
+4. Script editor: http://localhost:3000/editor.html
+5. GUI builder: http://localhost:3000/builder.html
+6. Config: server/config.yml
+
+================================================================================
+                           PROJECT STRUCTURE
+================================================================================
+
+ROOT/
+├── index.html                 # Main game/builder entry (PWA manifest)
+├── manifest.json              # PWA configuration
+├── service-worker.js          # Offline support
+├── README.md                  # Project documentation
+├── LICENSE                    # MIT License
+├── llms.txt                   # This file
+
+server/
+├── server.js                  # Express + WebSocket server (main entry)
+├── config.yml                 # Server configuration, passwords, auth tokens
+├── package.json               # Dependencies (express, ws, mysql2, js-yaml)
+├── middleware/
+│   └── auth.js                # Authentication manager (JWT-like tokens)
+├── scripts/
+│   ├── script-manager.js      # Load/save Lua scripts as .lua files
+│   ├── lua-interpreter.js     # Transpiler: Lua → JavaScript
+│   ├── game-script-engine.js  # Event system, hooks, variables
+│   └── compile-lua.js         # CLI: node compile-lua.js input.lua output.js
+├── data/
+│   ├── alltime.json           # Player database (auto-created)
+│   ├── guis/                  # Compiled GUI JSON files
+│   └── leaderboard.json       # Game statistics
+├── public/
+│   ├── index.html             # Game interface (username login, maze play)
+│   ├── editor.html            # Monaco-based Lua script editor w/ IntelliSense
+│   ├── builder.html           # Visual GUI builder (drag-drop components)
+│   └── worlds/
+│       └── hub.json           # Default maze map data
+└── node_modules/              # Dependencies
+
+examples/
+├── 01-events.lua              # Event system examples (10 examples)
+├── 02-variables.lua           # State management (20 examples)
+├── 03-control-flow.lua        # If/loops/conditions (20 examples)
+├── 04-functions.lua           # Function patterns (25 examples)
+├── 05-game-logic.lua          # Game mechanics (25 examples)
+├── 06-string-math.lua         # Math & strings (40 examples)
+├── 07-hooks.lua               # Interceptor patterns (25 examples)
+├── 08-patterns.lua            # Design patterns (30 examples)
+├── 09-advanced.lua            # Advanced game logic (30 examples)
+└── 10-quick-reference.lua     # API cheat sheet (100+ snippets)
+
+================================================================================
+                          GAME ARCHITECTURE
+================================================================================
+
+1. CLIENT LAYER (index.html)
+   - Username-based login
+   - Real-time WebSocket connection
+   - Canvas-based maze rendering (grid cells)
+   - Player sprite positioning
+   - Multiplayer sync (WASD/arrow keys)
+   
+2. SERVER LAYER (server.js)
+   - Express.js REST API
+   - WebSocket server for real-time gameplay
+   - World state management per player
+   - Multi-world support (hub, custom)
+   
+3. GAME STATE
+   - currentGameMap: 2D grid array
+   - myPos: {x, y} player position
+   - myPlayer: DOM element with sprite
+   - worlds: Server-side world object lookup
+   
+4. TILE TYPES
+   - 0: Empty space
+   - 1: Wall (collision stops movement)
+   - 2: Start (spawn point)
+   - 3: End (goal, triggers completion)
+   - 4: Teleporter {type:4, target:"worldName"}
+   
+5. WEBSOCKET MESSAGES
+   Sent by client:
+   - {type:"join", username}
+   - {type:"move", x, y}
+   - {type:"teleport", toWorld}
+   
+   Sent by server:
+   - {type:"map_data", world, data}
+   - {type:"world_update", players}
+
+================================================================================
+                            REST API ENDPOINTS
+================================================================================
+
+AUTHENTICATION:
+POST /api/auth
+  Params: {username}
+  Response: {success, token}
+  Purpose: Auto-register or login player by username
+
+POST /api/editor/auth
+  Params: {password}
+  Response: {success} | {error}
+  Purpose: Unlock map editor (requires admin_password from config.yml)
+
+POST /api/auth/logout
+  Purpose: Revoke session token
+
+WORLDS & MAPS:
+GET /api/worlds
+  Response: ["hub", "level1", ...]
+  Purpose: List all available maps
+
+POST /api/worlds
+  Params: {name, data, editorToken}
+  Response: {success}
+  Purpose: Save new map (requires editor auth)
+
+SCRIPTS:
+GET /api/scripts
+  Response: ["script1", "script2", ...]
+  Purpose: List all Lua scripts
+
+POST /api/scripts
+  Params: {name, script}
+  Response: {success}
+  Purpose: Save script (saved as name.lua)
+
+GET /api/scripts/:name
+  Response: {code}
+  Purpose: Load script source
+
+DELETE /api/scripts/:name
+  Response: {success}
+  Purpose: Delete script
+
+POST /api/lua/execute
+  Params: {code}
+  Response: {success, output[], errors[]}
+  Purpose: Execute Lua code (transpiled to JS)
+
+GUIs:
+GET /api/gui
+  Response: ["gui1", "gui2", ...]
+
+POST /api/gui
+  Params: {name, components, html, functions, triggers}
+
+GET /api/gui/:name
+  Response: {name, components[], html, functions, triggers}
+
+DELETE /api/gui/:name
+
+================================================================================
+                         LUA SCRIPTING SYSTEM
+================================================================================
+
+TRANSPILER (lua-interpreter.js)
+- Converts Lua → JavaScript at runtime
+- Supports: functions, if/else, for loops, while loops, local vars, return
+- Operators: ==, ~=, <=, >=, <, >, and, or, not, +, -, *, /, %
+- Limitations: No tables, metatables, coroutines, or full Lua stdlib
+
+GAME ENGINE API (game-script-engine.js)
+Global functions available in scripts:
+
+on(eventName, callback)
+  Register event listener
+  Example: on("player.move", function(data) print(data.x) end)
+  Events: player.move, player.collision, maze.start, maze.complete, collision
+
+emit(eventName, data)
+  Trigger event globally
+  Example: emit("custom.event", {key="value"})
+
+hook(hookName, callback)
+  Register before/after interceptor
+  Example: hook("beforeMove", function(data) return data end)
+  Must return data or nil to cancel
+  
+setVariable(key, value)
+  Store game state
+  Example: setVariable("score", 100)
+
+getVariable(key)
+  Retrieve game state
+  Example: local score = getVariable("score")
+
+STATE VARIABLES (Common):
+- score: Current score
+- level: Current level
+- health: Player health (0-100)
+- moveCount: Total moves made
+- playerX, playerY: Current position
+- lastWinner: Last player to complete maze
+- comboMultiplier: Combo multiplier (1.0+)
+- isActive: Game state flag
+- speed: Movement speed bonus
+- etc (custom per script)
+
+BUILT-IN LUA FUNCTIONS:
+print(value)
+tostring(value)
+tonumber(string)
+type(value)
+math.random([min], [max])
+math.sqrt(n)
+math.abs(n)
+math.floor(n)
+math.ceil(n)
+math.sin/cos/tan(x)
+string.len(str)
+string.sub(str, start, end)
+string.find(str, pattern)
+os.time()
+
+CLI COMPILATION:
+node server/scripts/compile-lua.js input.lua [output.js]
+Transpile single file to JavaScript
+
+================================================================================
+                          GUI BUILDER SYSTEM
+================================================================================
+
+ACCESS: http://localhost:3000/builder.html
+
+COMPONENTS:
+- Button (text, color, width, height, onClick trigger)
+- Text (static label)
+- Input (text field)
+- Checkbox (boolean input)
+- Dropdown/Select (options list)
+- Label (form label)
+
+FEATURES:
+1. Drag-and-drop canvas
+2. Property panel (color picker, dimensions, text editor)
+3. Trigger system (onClick, onChange, onLoad)
+4. Event/hook integration
+5. Save/Load GUIs (stored as JSON)
+6. Compile to HTML + Lua code
+
+WORKFLOW:
+1. Add components to canvas
+2. Configure properties (text, color, size)
+3. Set triggers (Lua code to execute)
+4. Compile & Save (generates name.json in data/guis/)
+5. Retrieve via /api/gui/:name
+
+COMPILATION OUTPUT:
+{
+  name: "myGUI",
+  components: [{id, type, text, color, width, height, triggers}],
+  html: "<div>...</div>",
+  functions: "-- Lua code",
+  triggers: {onClick: "...", onChange: "..."}
+}
+
+================================================================================
+                       MONACO SCRIPT EDITOR
+================================================================================
+
+ACCESS: http://localhost:3000/editor.html
+
+FEATURES:
+1. Password protection (admin_password from config.yml)
+2. Lua syntax highlighting
+3. IntelliSense with autocomplete
+4. Hover documentation
+5. Script library (list existing scripts)
+6. Create/Load/Save/Execute scripts
+7. Code snippets (function, if, for, while, local)
+
+INTELLISENSE INCLUDES:
+- Game Engine API: on, emit, hook, setVariable, getVariable
+- Events: player.move, player.collision, maze.start, maze.complete
+- Lua builtins: print, math.random, string.len, table.insert, etc
+- Keywords: function, if, for, while, local, return
+
+SYNTAX HIGHLIGHTING:
+- Keywords: local, function, if, then, else, end, for, while, do, return
+- Comments: -- comment (green)
+- Numbers: numeric literals (orange)
+- Strings: "text" or 'text' (red)
+- Identifiers: variable names (white)
+
+================================================================================
+                       CONFIGURATION
+================================================================================
+
+server/config.yml:
+```yaml
+server:
+  name: "SuperMaze Official"
+  port: 3000
+  max_players: 50
+
+auth:
+  admin_password: "changethis"      # Map editor access
+  maze_password: "changethis"       # Maze game access (if enabled)
+  token_expiry_ms: 3600000          # 1 hour session
+
+scripting:
+  enabled: true
+  engine: "lua"
+  max_script_size: 100000           # 100KB limit
+  execution_timeout: 5000           # 5 second timeout
+
+database:
+  type: "json"                      # or "mysql"
+  mysql:
+    host: "localhost"
+    user: "root"
+    password: ""
+    database: "supermaze"
+```
+
+CHANGE PASSWORDS:
+Edit server/config.yml line 9-10, then restart server.
+
+================================================================================
+                         MAP EDITOR
+================================================================================
+
+ACCESS: http://localhost:3000 → "Map Editor" button → Enter password
+
+FEATURES:
+1. Grid-based maze designer
+2. Configurable grid size (default 15x15)
+3. Tile tools: Wall, Start, End, Teleporter, Eraser
+4. Save maps (stored as world name)
+5. Password protected
+
+TILE TYPES:
+- 🧱 Wall (type: 1, blocks movement)
+- 🚩 Start (type: 2, spawn point)
+- 🏁 End (type: 3, goal/exit)
+- 🌌 Teleporter (type: 4, {type:4, target:"worldName"})
+
+WORKFLOW:
+1. Login with username
+2. Click "Map Editor" → Enter password
+3. Set world name (e.g., "level1")
+4. Set grid size (15 = 15x15)
+5. Click "New" to create grid
+6. Use tools to paint maze
+7. Click "Save" to save
+
+MAP STORAGE:
+Saved as /server/public/worlds/{name}.json
+{
+  size: 15,
+  grid: [
+    [0, 1, 0, ...],
+    [2, 0, 0, ...],
+    ...
+  ]
+}
+
+================================================================================
+                       EXAMPLE SCRIPTS
+================================================================================
+
+100+ Lua examples in /examples/ folder organized by topic:
+
+01-events.lua (10 ex)
+- Event listeners (on, emit)
+- Collision detection
+- Chained events
+- Null-safe handling
+
+02-variables.lua (20 ex)
+- Variable declaration
+- Game state tracking
+- Counters, timers
+- Conditional assignments
+
+03-control-flow.lua (20 ex)
+- If/else/elseif
+- For loops (numeric, countdown)
+- While loops
+- Nested conditionals
+- Operators (and, or, not)
+
+04-functions.lua (25 ex)
+- Function definitions
+- Parameters and returns
+- Recursive functions
+- Game state modification
+- Event emission
+
+05-game-logic.lua (25 ex)
+- Collision with walls/items
+- Speed boosts, hazards
+- Key collection
+- Combo systems
+- Leaderboard tracking
+- Experience/leveling
+- Boss battles
+- Checkpoints
+
+06-string-math.lua (40 ex)
+- String concatenation
+- Math operations
+- Trigonometry
+- Distance/angle calculations
+- Interpolation (lerp)
+- Clamping, rounding
+- Prime numbers, fibonacci
+
+07-hooks.lua (25 ex)
+- Before/after hooks
+- Validation hooks
+- Cost deduction
+- Damage calculation
+- Critical strikes
+- Level up system
+- Cooldown management
+- Item effects
+
+08-patterns.lua (30 ex)
+- State machines
+- Observer pattern
+- Factory pattern
+- Strategy pattern
+- Memoization
+- Queues and stacks
+- Throttling/debouncing
+- Lazy initialization
+
+09-advanced.lua (30 ex)
+- Dynamic difficulty
+- Procedural generation
+- Stealth mechanics
+- Conversation system
+- Quest branching
+- Inventory weight
+- Durability system
+- Currency/reputation
+- Crafting/enchantment
+- Status effects
+- Resource generation
+- Seasonal events
+
+10-quick-reference.lua (100+ snippets)
+- API cheat sheet
+- Common patterns
+- Code templates
+- Best practices
+
+================================================================================
+                        DEPLOYMENT
+================================================================================
+
+PRODUCTION CHECKLIST:
+1. Change passwords in config.yml
+2. Set database.use_mysql: true (optional)
+3. Configure max_players and timeouts
+4. Enable HTTPS for production
+5. Use process manager (pm2, systemd)
+6. Monitor logs and crashes
+7. Regular backups of data/
+
+DOCKER (optional):
+Create Dockerfile to containerize server.
+
+SCALING:
+- Multiple server instances
+- Load balancer (nginx)
+- Shared database (MySQL)
+- Redis for session store
+
+================================================================================
+                       DEVELOPMENT NOTES
+================================================================================
+
+KEY FILES:
+- server.js: Main server logic, routes, WebSocket
+- lua-interpreter.js: Lua→JS transpiler
+- game-script-engine.js: Event system
+- index.html: Game client
+- editor.html: Script editor with Monaco
+- builder.html: Visual GUI builder
+
+DEBUGGING:
+- Browser DevTools (F12)
+- Server logs in terminal
+- Check config.yml for issues
+- Test scripts via /api/lua/execute
+
+TESTING:
+- Manual gameplay testing
+- Script execution tests
+- API endpoint tests
+- WebSocket message validation
+
+KNOWN LIMITATIONS:
+- Lua subset only (no full stdlib)
+- No multiplayer physics simulation
+- Simple grid-based collision
+- Single-threaded execution
+- No persistent game state across restarts
+
+FUTURE IMPROVEMENTS:
+- Full Lua 5.1 support
+- More complex physics
+- Persistent player profiles
+- Achievements/badges
+- Guilds/clans
+- Trading system
+- PvP mechanics
+- Mobile app
+
+================================================================================
+                       QUICK COMMANDS
+================================================================================
+
+Start server:
+  node server/server.js
+
+Compile Lua script:
+  node server/scripts/compile-lua.js input.lua output.js
+
+Access game:
+  http://localhost:3000
+
+Access editor:
+  http://localhost:3000/editor.html
+  Password: changethis (see config.yml)
+
+Access GUI builder:
+  http://localhost:3000/builder.html
+
+Create map:
+  Login → Map Editor → Enter password → Design → Save
+
+Create script:
+  Editor → New Script → Write Lua → Save → Execute
+
+Create GUI:
+  GUI Builder → Add components → Configure → Compile & Save
+
+================================================================================
+                       FILE SIZES & METRICS
+================================================================================
+
+Code:
+- server.js: ~750 lines
+- lua-interpreter.js: ~450 lines
+- game-script-engine.js: ~136 lines
+- index.html: ~3300 lines
+- editor.html: ~450 lines
+- builder.html: ~500 lines
+
+Examples:
+- 10 files, ~850+ code examples
+- ~6000 lines total
+
+Total project: ~12,000 lines of code
+
+================================================================================
+
+Last Updated: 2026-01-17
+Version: 2.1
+License: MIT
+
+================================================================================
