@@ -1,0 +1,26 @@
+
+server:
+  name: "SuperMaze Official"
+  port: 3000
+  max_players: 50
+
+# Authentication
+auth:
+  admin_password: "changethis"  # Lua Editor password - CHANGE THIS IN PRODUCTION!
+  maze_password: "changethis"   # Maze Game password - CHANGE THIS IN PRODUCTION!
+  token_expiry_ms: 3600000      # 1 hour
+
+# Scripting
+scripting:
+  enabled: true
+  engine: "lua"                 # Lua scripts transpiled to JavaScript
+  max_script_size: 100000       # Max 100KB per script
+  execution_timeout: 5000       # 5 second timeout
+
+database:
+  type: "json"                  # Options: json, mysql
+  mysql:
+    host: "localhost"
+    user: "root"
+    password: ""
+    database: "supermaze"

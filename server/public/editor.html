@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SuperMaze - Script Editor</title>
+<link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/editor/editor.main.min.css">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',Roboto,sans-serif; background:#1e1e1e; color:#fff; display:flex; flex-direction:column; height:100vh; }
+
+.header { background:#252526; padding:15px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #3e3e42; }
+.header h1 { font-size:20px; }
+.header .buttons { display:flex; gap:10px; }
+
+button { padding:8px 16px; border:none; border-radius:5px; cursor:pointer; font-weight:bold; transition:0.2s; }
+button.primary { background:#0e639c; color:white; }
+button.primary:hover { background:#1177bb; }
+button.secondary { background:#444; color:white; }
+button.secondary:hover { background:#555; }
+button.danger { background:#d13438; color:white; }
+button.danger:hover { background:#e81123; }
+
+.editor-container { display:flex; flex:1; gap:1px; background:#1e1e1e; }
+#monaco-editor { flex:1; }
+
+.sidebar { width:250px; background:#252526; border-left:1px solid #3e3e42; display:flex; flex-direction:column; overflow-y:auto; }
+.sidebar h3 { padding:10px; border-bottom:1px solid #3e3e42; font-size:14px; color:#ccc; }
+.script-list { padding:10px; }
+.script-item { padding:8px; margin:5px 0; background:#3e3e42; border-radius:3px; cursor:pointer; font-size:13px; }
+.script-item:hover { background:#454545; }
+.script-item.active { background:#0e639c; }
+
+.modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); justify-content:center; align-items:center; z-index:1000; }
+.modal.show { display:flex; }
+.modal-content { background:#252526; padding:20px; border-radius:8px; min-width:400px; border:1px solid #3e3e42; }
+.modal-content h2 { margin-bottom:15px; }
+.modal-content input { width:100%; padding:10px; margin:10px 0; background:#1e1e1e; border:1px solid #3e3e42; color:#fff; border-radius:3px; }
+.modal-buttons { display:flex; gap:10px; margin-top:15px; justify-content:flex-end; }
+
+.status-bar { background:#007acc; padding:5px 15px; font-size:12px; display:flex; justify-content:space-between; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🔧 SuperMaze Script Editor</h1>
+  <div class="buttons">
+    <button class="secondary" onclick="logout()">← Back</button>
+    <button class="primary" onclick="saveScript()">💾 Save</button>
+    <button class="primary" onclick="executeScript()">▶ Execute</button>
+  </div>
+</div>
+
+<div class="editor-container">
+  <div id="monaco-editor"></div>
+  <div class="sidebar">
+    <h3>📄 Scripts</h3>
+    <div class="script-list" id="script-list"></div>
+    <div style="padding:10px;">
+      <button class="primary" style="width:100%; margin-top:10px;" onclick="showNewScriptModal()">+ New Script</button>
+    </div>
+  </div>
+</div>
+
+<div class="status-bar">
+  <span id="status-text">Ready</span>
+  <span id="script-name-display">Untitled</span>
+</div>
+
+<!-- New Script Modal -->
+<div id="new-script-modal" class="modal">
+  <div class="modal-content">
+    <h2>Create New Script</h2>
+    <input type="text" id="new-script-name" placeholder="Script name (e.g. my-script)">
+    <div class="modal-buttons">
+      <button class="secondary" onclick="closeNewScriptModal()">Cancel</button>
+      <button class="primary" onclick="createNewScript()">Create</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+<script>
+// --- STATE ---
+let editor = null;
+let currentScript = null;
+let editorPassword = null;
+
+// --- INIT ---
+window.addEventListener('DOMContentLoaded', () => {
+  const pwd = prompt("Editor Password:");
+  if(!pwd) {
+    logout();
+    return;
+  }
+  
+  authEditor(pwd);
+});
+
+async function authEditor(password) {
+  const res = await fetch('/api/editor/auth', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({password})
+  });
+  const data = await res.json();
+  
+  if(!data.success) {
+    alert("Wrong password");
+    logout();
+    return;
+  }
+  
+  editorPassword = password;
+  initMonaco();
+  loadScriptList();
+}
+
+function initMonaco() {
+  require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
+  require(['vs/editor/editor.main'], () => {
+    // Define Lua language if not exists
+    if (!monaco.languages.getLanguages().find(l => l.id === 'lua')) {
+      monaco.languages.register({ id: 'lua' });
+      monaco.languages.setMonarchTokensProvider('lua', {
+        tokenizer: {
+          root: [
+            [/--.*$/, 'comment'],
+            [/(local|function|if|then|else|elseif|end|for|while|do|return|and|or|not|in)/, 'keyword'],
+            [/(true|false|nil)/, 'constant'],
+            [/\d+\.?\d*/, 'number'],
+            [/"[^"]*"|'[^']*'/, 'string'],
+            [/[a-zA-Z_]\w*/, 'identifier']
+          ]
+        }
+      });
+    }
+
+    editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+      value: '-- Write your Lua script here\n',
+      language: 'lua',
+      theme: 'vs-dark',
+      automaticLayout: true,
+      fontSize: 14,
+      tabSize: 2,
+      wordWrap: 'on'
+    });
+
+    // Register IntelliSense completions
+    monaco.languages.registerCompletionItemProvider('lua', {
+      provideCompletionItems: (model, position) => {
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn
+        };
+
+        const completions = [
+          // Game Engine API
+          { label: 'on', kind: monaco.languages.CompletionItemKind.Function, insertText: 'on("${1:eventName}", function(data)\n  $0\nend)', range, documentation: 'Register an event handler' },
+          { label: 'emit', kind: monaco.languages.CompletionItemKind.Function, insertText: 'emit("${1:eventName}", ${2:{}})', range, documentation: 'Emit an event' },
+          { label: 'hook', kind: monaco.languages.CompletionItemKind.Function, insertText: 'hook("${1:hookName}", function(data)\n  return ${2:data}\nend)', range, documentation: 'Register a hook' },
+          { label: 'setVariable', kind: monaco.languages.CompletionItemKind.Function, insertText: 'setVariable("${1:name}", ${2:value})', range, documentation: 'Set a game variable' },
+          { label: 'getVariable', kind: monaco.languages.CompletionItemKind.Function, insertText: 'getVariable("${1:name}")', range, documentation: 'Get a game variable' },
+          
+          // Game Events
+          { label: 'player.move', kind: monaco.languages.CompletionItemKind.EnumMember, insertText: 'player.move', range, documentation: 'Fired when player moves' },
+          { label: 'player.collision', kind: monaco.languages.CompletionItemKind.EnumMember, insertText: 'player.collision', range, documentation: 'Fired when player collides with tile' },
+          { label: 'maze.start', kind: monaco.languages.CompletionItemKind.EnumMember, insertText: 'maze.start', range, documentation: 'Fired when maze starts' },
+          { label: 'maze.complete', kind: monaco.languages.CompletionItemKind.EnumMember, insertText: 'maze.complete', range, documentation: 'Fired when maze is completed' },
+          { label: 'collision', kind: monaco.languages.CompletionItemKind.EnumMember, insertText: 'collision', range, documentation: 'Fired on collision' },
+          
+          // Lua built-ins
+          { label: 'print', kind: monaco.languages.CompletionItemKind.Function, insertText: 'print(${1:value})', range, documentation: 'Print to console' },
+          { label: 'math.random', kind: monaco.languages.CompletionItemKind.Function, insertText: 'math.random(${1:min}, ${2:max})', range, documentation: 'Random number' },
+          { label: 'string.len', kind: monaco.languages.CompletionItemKind.Function, insertText: 'string.len(${1:str})', range, documentation: 'String length' },
+          { label: 'table.insert', kind: monaco.languages.CompletionItemKind.Function, insertText: 'table.insert(${1:table}, ${2:value})', range, documentation: 'Insert into table' },
+          { label: 'tostring', kind: monaco.languages.CompletionItemKind.Function, insertText: 'tostring(${1:value})', range, documentation: 'Convert to string' },
+          { label: 'tonumber', kind: monaco.languages.CompletionItemKind.Function, insertText: 'tonumber(${1:value})', range, documentation: 'Convert to number' },
+          
+          // Keywords
+          { label: 'function', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'function ${1:name}(${2:args})\n  $0\nend', range, documentation: 'Define a function' },
+          { label: 'if', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'if ${1:condition} then\n  $0\nend', range, documentation: 'Conditional statement' },
+          { label: 'for', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'for ${1:i}=1,${2:10} do\n  $0\nend', range, documentation: 'For loop' },
+          { label: 'while', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'while ${1:condition} do\n  $0\nend', range, documentation: 'While loop' },
+          { label: 'local', kind: monaco.languages.CompletionItemKind.Keyword, insertText: 'local ${1:var} = ${2:value}', range, documentation: 'Local variable' },
+        ];
+
+        return { suggestions: completions };
+      }
+    });
+
+    // Register hover provider
+    monaco.languages.registerHoverProvider('lua', {
+      provideHover: (model, position) => {
+        const word = model.getWordAtPosition(position);
+        if (!word) return;
+
+        const docs = {
+          'on': 'Register an event handler\n\nSyntax: on(eventName, callback)',
+          'emit': 'Emit an event\n\nSyntax: emit(eventName, data)',
+          'hook': 'Register a hook\n\nSyntax: hook(hookName, fn)',
+          'player.move': 'Event: Player moved\n\nData: {x, y, username}',
+          'player.collision': 'Event: Player collided with tile\n\nData: {tile, x, y}',
+          'maze.complete': 'Event: Maze completed\n\nData: {username, time}',
+          'print': 'Print message to console\n\nSyntax: print(value)'
+        };
+
+        if (docs[word.word]) {
+          return {
+            contents: docs[word.word]
+          };
+        }
+      }
+    });
+  });
+}
+
+async function loadScriptList() {
+  const res = await fetch('/api/scripts');
+  const scripts = await res.json();
+  
+  const list = document.getElementById('script-list');
+  list.innerHTML = '';
+  
+  scripts.forEach(name => {
+    const item = document.createElement('div');
+    item.className = 'script-item';
+    item.innerText = name;
+    item.onclick = () => loadScript(name);
+    list.appendChild(item);
+  });
+}
+
+async function loadScript(name) {
+  const res = await fetch(`/api/scripts/${name}`);
+  const data = await res.json();
+  
+  currentScript = name;
+  editor.setValue(data.code || '');
+  document.getElementById('script-name-display').innerText = name;
+  
+  // Highlight active script
+  document.querySelectorAll('.script-item').forEach(el => el.classList.remove('active'));
+  event.target.classList.add('active');
+  
+  updateStatus(`Loaded: ${name}`);
+}
+
+async function saveScript() {
+  if(!currentScript) {
+    alert("Please create or load a script first");
+    return;
+  }
+  
+  const code = editor.getValue();
+  const res = await fetch('/api/scripts', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({name: currentScript, script: code})
+  });
+  const data = await res.json();
+  
+  if(data.success) {
+    updateStatus(`✓ Saved: ${currentScript}`);
+  } else {
+    alert("Save failed: " + data.error);
+  }
+}
+
+async function executeScript() {
+  if(!editor) return alert("Editor not ready");
+  
+  const code = editor.getValue();
+  const res = await fetch('/api/lua/execute', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({code})
+  });
+  const data = await res.json();
+  
+  if(data.success) {
+    alert("Output:\n" + (data.output || []).join('\n'));
+    updateStatus("✓ Executed");
+  } else {
+    alert("Execution failed:\n" + data.error);
+    updateStatus("✗ Error");
+  }
+}
+
+function showNewScriptModal() {
+  document.getElementById('new-script-modal').classList.add('show');
+  document.getElementById('new-script-name').focus();
+}
+
+function closeNewScriptModal() {
+  document.getElementById('new-script-modal').classList.remove('show');
+}
+
+function createNewScript() {
+  const name = document.getElementById('new-script-name').value.trim();
+  if(!name) return alert("Enter script name");
+  
+  currentScript = name;
+  editor.setValue('-- New script\n');
+  document.getElementById('script-name-display').innerText = name;
+  closeNewScriptModal();
+  loadScriptList();
+  updateStatus(`Created: ${name}`);
+}
+
+function updateStatus(msg) {
+  document.getElementById('status-text').innerText = msg;
+}
+
+function logout() {
+  window.location.href = '/';
+}
+</script>
+</body>
+</html>

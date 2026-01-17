@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SuperMaze - GUI Builder</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',Roboto,sans-serif; background:#1e1e1e; color:#fff; display:flex; height:100vh; }
+
+.toolbar { width:200px; background:#252526; border-right:1px solid #3e3e42; padding:15px; overflow-y:auto; }
+.toolbar h3 { font-size:13px; color:#ccc; margin-bottom:10px; margin-top:15px; }
+.toolbar h3:first-child { margin-top:0; }
+
+.component-btn { width:100%; padding:8px; margin:5px 0; background:#3e3e42; border:1px solid #555; color:#fff; border-radius:3px; cursor:pointer; font-size:12px; transition:0.2s; }
+.component-btn:hover { background:#454545; }
+
+.workspace { flex:1; display:flex; gap:1px; }
+.canvas { flex:1; background:#2d2d30; border-right:1px solid #3e3e42; padding:20px; overflow:auto; }
+.canvas-content { min-height:400px; border:2px dashed #3e3e42; padding:10px; position:relative; background:rgba(255,255,255,0.02); }
+
+.properties { width:250px; background:#252526; border-left:1px solid #3e3e42; padding:15px; overflow-y:auto; }
+.properties h3 { font-size:13px; margin-bottom:10px; color:#ccc; }
+
+.component { padding:8px; margin:5px; background:#3e3e42; border:1px solid #555; border-radius:3px; cursor:move; user-select:none; position:relative; }
+.component.selected { border:2px solid #0e639c; background:#2d5080; }
+.component-remove { position:absolute; top:2px; right:5px; cursor:pointer; color:#f48771; font-size:12px; font-weight:bold; }
+
+.prop-group { margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid #3e3e42; }
+.prop-group label { display:block; font-size:12px; margin-bottom:5px; color:#ccc; }
+.prop-group input, .prop-group select, .prop-group textarea { width:100%; padding:5px; background:#1e1e1e; border:1px solid #3e3e42; color:#fff; border-radius:3px; font-size:11px; }
+.prop-group textarea { min-height:60px; resize:vertical; font-family:monospace; }
+
+.tabs { display:flex; gap:0; border-bottom:1px solid #3e3e42; margin-bottom:10px; }
+.tab { padding:8px 15px; background:#1e1e1e; border:1px solid #3e3e42; cursor:pointer; font-size:12px; }
+.tab.active { background:#3e3e42; border-bottom:2px solid #0e639c; }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+
+.header { background:#252526; padding:15px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #3e3e42; }
+button { padding:8px 16px; border:none; border-radius:3px; cursor:pointer; font-weight:bold; transition:0.2s; }
+button.primary { background:#0e639c; color:white; }
+button.primary:hover { background:#1177bb; }
+button.secondary { background:#444; color:white; }
+button.secondary:hover { background:#555; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h3>📦 Components</h3>
+  <button class="component-btn" onclick="addComponent('button')">🔘 Button</button>
+  <button class="component-btn" onclick="addComponent('text')">📝 Text</button>
+  <button class="component-btn" onclick="addComponent('input')">📋 Input</button>
+  <button class="component-btn" onclick="addComponent('checkbox')">☑️ Checkbox</button>
+  <button class="component-btn" onclick="addComponent('select')">▼ Dropdown</button>
+  <button class="component-btn" onclick="addComponent('label')">🏷️ Label</button>
+  
+  <h3>🎯 GUIs</h3>
+  <div id="gui-list" style="font-size:12px; max-height:200px; overflow-y:auto;"></div>
+  <button class="component-btn" onclick="newGUI()" style="margin-top:10px;">+ New GUI</button>
+</div>
+
+<div class="workspace">
+  <div class="canvas">
+    <div class="canvas-content" id="canvas" ondrop="dropComponent(event)" ondragover="allowDrop(event)"></div>
+  </div>
+  
+  <div class="properties">
+    <div id="props-header">
+      <h3>Properties</h3>
+      <button class="primary" style="width:100%; margin-bottom:10px;" onclick="compileGUI()">💾 Compile & Save</button>
+    </div>
+    
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('element')">Element</div>
+      <div class="tab" onclick="switchTab('triggers')">Triggers</div>
+      <div class="tab" onclick="switchTab('functions')">Functions</div>
+    </div>
+    
+    <div id="element-props" class="tab-content active"></div>
+    <div id="triggers-props" class="tab-content"></div>
+    <div id="functions-props" class="tab-content"></div>
+  </div>
+</div>
+
+<script>
+// --- STATE ---
+let selectedComponent = null;
+let components = [];
+let currentGUI = { name: 'untitled', components: [], functions: '', triggers: {} };
+let guiList = [];
+
+// --- CANVAS ---
+function allowDrop(e) {
+  e.preventDefault();
+}
+
+function dropComponent(e) {
+  e.preventDefault();
+  const type = e.dataTransfer.getData('type');
+  if(type) addComponent(type);
+}
+
+function addComponent(type) {
+  const id = 'comp_' + Math.random().toString(36).substr(2, 9);
+  const comp = {
+    id, type,
+    text: type === 'button' ? 'Click Me' : type === 'label' ? 'Label' : '',
+    color: '#6c63ff',
+    width: '100px',
+    height: '40px',
+    triggers: {},
+    visible: true
+  };
+  
+  if(type === 'select') comp.options = 'Option 1,Option 2,Option 3';
+  
+  components.push(comp);
+  currentGUI.components = components;
+  renderCanvas();
+}
+
+function renderCanvas() {
+  const canvas = document.getElementById('canvas');
+  canvas.innerHTML = '';
+  
+  components.forEach(comp => {
+    const el = document.createElement('div');
+    el.className = 'component' + (comp.id === selectedComponent ? ' selected' : '');
+    el.draggable = true;
+    el.onclick = () => selectComponent(comp.id);
+    el.ondragstart = (e) => e.dataTransfer.setData('id', comp.id);
+    
+    let html = '';
+    if(comp.type === 'button') html = `<button style="background:${comp.color}; color:white; border:none; padding:8px 12px; border-radius:3px; cursor:pointer;">${comp.text}</button>`;
+    else if(comp.type === 'text') html = `<span>${comp.text}</span>`;
+    else if(comp.type === 'input') html = `<input type="text" placeholder="${comp.text}" style="padding:5px; border:1px solid #3e3e42;">`;
+    else if(comp.type === 'checkbox') html = `<input type="checkbox"> ${comp.text}`;
+    else if(comp.type === 'select') html = `<select style="padding:5px; background:#1e1e1e; color:#fff; border:1px solid #3e3e42;"><option>Select...</option></select>`;
+    else if(comp.type === 'label') html = `<label>${comp.text}</label>`;
+    
+    el.innerHTML = `${html}<span class="component-remove" onclick="removeComponent('${comp.id}')">✕</span>`;
+    el.style.width = comp.width;
+    el.style.height = comp.height;
+    canvas.appendChild(el);
+  });
+}
+
+function selectComponent(id) {
+  selectedComponent = id;
+  renderCanvas();
+  renderProperties();
+}
+
+function removeComponent(id) {
+  components = components.filter(c => c.id !== id);
+  currentGUI.components = components;
+  if(selectedComponent === id) selectedComponent = null;
+  renderCanvas();
+  renderProperties();
+}
+
+// --- PROPERTIES ---
+function renderProperties() {
+  const comp = components.find(c => c.id === selectedComponent);
+  if(!comp) {
+    document.getElementById('element-props').innerHTML = '<p style="color:#999; font-size:12px;">Select a component</p>';
+    return;
+  }
+  
+  let html = `
+    <div class="prop-group">
+      <label>Type: ${comp.type}</label>
+    </div>
+    <div class="prop-group">
+      <label>Text/Label</label>
+      <input type="text" value="${comp.text}" onchange="updateProp('text', this.value)">
+    </div>
+    <div class="prop-group">
+      <label>Color</label>
+      <input type="color" value="${comp.color}" onchange="updateProp('color', this.value)">
+    </div>
+    <div class="prop-group">
+      <label>Width</label>
+      <input type="text" value="${comp.width}" onchange="updateProp('width', this.value)">
+    </div>
+    <div class="prop-group">
+      <label>Height</label>
+      <input type="text" value="${comp.height}" onchange="updateProp('height', this.value)">
+    </div>
+  `;
+  
+  if(comp.type === 'select') {
+    html += `<div class="prop-group">
+      <label>Options (comma-separated)</label>
+      <input type="text" value="${comp.options}" onchange="updateProp('options', this.value)">
+    </div>`;
+  }
+  
+  document.getElementById('element-props').innerHTML = html;
+  
+  // Triggers
+  let triggersHtml = `<div class="prop-group">
+    <label>Event Type</label>
+    <select id="trigger-type" onchange="updateTriggerType()">
+      <option value="onclick">onClick</option>
+      <option value="onchange">onChange</option>
+      <option value="onload">onLoad</option>
+    </select>
+  </div>
+  <div class="prop-group">
+    <label>Action (Lua code)</label>
+    <textarea id="trigger-code" placeholder="e.g., print('Button clicked!')" onchange="updateTrigger()"></textarea>
+  </div>`;
+  
+  document.getElementById('triggers-props').innerHTML = triggersHtml;
+}
+
+function updateProp(key, value) {
+  const comp = components.find(c => c.id === selectedComponent);
+  if(comp) {
+    comp[key] = value;
+    renderCanvas();
+  }
+}
+
+function updateTriggerType() {
+  const type = document.getElementById('trigger-type').value;
+  // Placeholder for trigger type change
+}
+
+function updateTrigger() {
+  const comp = components.find(c => c.id === selectedComponent);
+  const code = document.getElementById('trigger-code').value;
+  if(comp) {
+    comp.triggers['onclick'] = code;
+  }
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById(tab + '-props').classList.add('active');
+}
+
+// --- COMPILE & SAVE ---
+function compileGUI() {
+  const name = prompt("GUI Name:", currentGUI.name);
+  if(!name) return;
+  
+  currentGUI.name = name;
+  currentGUI.components = components;
+  
+  // Compile to HTML
+  let html = '<div style="padding:20px; font-family:Segoe UI, sans-serif; background:#2d2d30; color:#fff; border-radius:8px;">\n';
+  
+  components.forEach(comp => {
+    if(comp.type === 'button') {
+      html += `  <button id="${comp.id}" style="background:${comp.color}; color:white; border:none; padding:8px 12px; border-radius:3px; cursor:pointer; margin:5px; width:${comp.width}; height:${comp.height};">${comp.text}</button>\n`;
+    }
+    else if(comp.type === 'input') {
+      html += `  <input type="text" id="${comp.id}" placeholder="${comp.text}" style="padding:5px; border:1px solid #3e3e42; margin:5px; width:${comp.width};"><br>\n`;
+    }
+    else if(comp.type === 'label') {
+      html += `  <label id="${comp.id}" style="display:block; margin:5px;">${comp.text}</label>\n`;
+    }
+    else if(comp.type === 'text') {
+      html += `  <span id="${comp.id}">${comp.text}</span><br>\n`;
+    }
+    else if(comp.type === 'checkbox') {
+      html += `  <input type="checkbox" id="${comp.id}"> <label for="${comp.id}">${comp.text}</label><br>\n`;
+    }
+    else if(comp.type === 'select') {
+      const opts = comp.options.split(',').map(o => `<option>${o.trim()}</option>`).join('');
+      html += `  <select id="${comp.id}" style="padding:5px; margin:5px;"><option>Select...</option>${opts}</select><br>\n`;
+    }
+  });
+  
+  html += '</div>';
+  
+  currentGUI.html = html;
+  
+  saveGUI();
+}
+
+async function saveGUI() {
+  const res = await fetch('/api/gui', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(currentGUI)
+  });
+  const data = await res.json();
+  if(data.success) {
+    alert(`✓ Saved: ${currentGUI.name}`);
+    loadGUIList();
+  } else {
+    alert("Save failed");
+  }
+}
+
+async function loadGUIList() {
+  const res = await fetch('/api/gui');
+  guiList = await res.json();
+  
+  const list = document.getElementById('gui-list');
+  list.innerHTML = '';
+  guiList.forEach(name => {
+    const item = document.createElement('div');
+    item.style.padding = '5px';
+    item.style.margin = '5px 0';
+    item.style.background = '#3e3e42';
+    item.style.borderRadius = '3px';
+    item.style.cursor = 'pointer';
+    item.innerText = name;
+    item.onclick = () => loadGUI(name);
+    list.appendChild(item);
+  });
+}
+
+async function loadGUI(name) {
+  const res = await fetch(`/api/gui/${name}`);
+  const gui = await res.json();
+  currentGUI = gui;
+  components = gui.components || [];
+  selectedComponent = null;
+  renderCanvas();
+  renderProperties();
+}
+
+function newGUI() {
+  currentGUI = { name: 'untitled', components: [], functions: '', triggers: {} };
+  components = [];
+  selectedComponent = null;
+  renderCanvas();
+  renderProperties();
+}
+
+// Init
+loadGUIList();
+</script>
+</body>
+</html>

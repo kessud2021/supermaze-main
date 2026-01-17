@@ -604,7 +604,6 @@
     </style>
   </head>
   <body class="theme-light">
-    <!-- INITIAL_LOGIN: Collect username and show offline status -->
     <div id="username-screen" class="connect-container">
       <div class="card connect-card text-center p-0">
         <div class="card-body">
@@ -631,7 +630,6 @@
       </div>
     </div>
 
-    <!-- MENU: Game mode, theme, leaderboard, settings selector -->
     <div id="connect-screen" class="connect-container d-none">
       <div class="card connect-card p-0">
         <div class="card-body">
@@ -656,8 +654,15 @@
               </button>
             </div>
             <button
+              id="multiplayer-btn"
+              class="btn btn-primary w-100 mb-2"
+            >
+              <i class="bi bi-globe"></i> Multiplayer
+            </button>
+
+            <button
               id="replay-list-btn"
-              class="btn btn-outline-primary w-100 mb-2 mt-2"
+              class="btn btn-outline-primary w-100 mb-2"
             >
               Saved Replays
             </button>
@@ -671,12 +676,12 @@
                 <option value="red">Red</option>
               </select>
               <button
-                 id="customize-btn"
-                 class="btn btn-outline-info"
-                 title="Customize theme"
-               >
-                 <i class="bi bi-plus-lg"></i>
-               </button>
+                  id="customize-btn"
+                  class="btn btn-outline-info"
+                  title="Customize theme"
+                >
+                  <i class="bi bi-plus-lg"></i>
+                </button>
             </div>
             <div id="xp-info" class="mb-2 text-muted small"></div>
             <div style="display: flex; gap: 8px; margin-bottom: 8px">
@@ -707,7 +712,6 @@
       </div>
     </div>
 
-    <!-- GAMEPLAY: Maze grid, live keystroke indicators, elapsed time, exit button -->
     <div id="maze-screen" class="maze-container d-none">
       <div id="maze-grid" class="maze-grid" aria-hidden="false"></div>
       <div id="keystrokes" class="keystrokes"></div>
@@ -802,6 +806,7 @@
       const customizeBtn = document.getElementById("customize-btn");
       const xpInfo = document.getElementById("xp-info");
       const singleBtn = document.getElementById("single-btn");
+      const multiplayerBtn = document.getElementById("multiplayer-btn"); // Added
       const replayListBtn = document.getElementById("replay-list-btn");
       const leaderboardBtn = document.getElementById("leaderboard-btn");
       const settingsBtn = document.getElementById("settings-btn");
@@ -1049,7 +1054,7 @@
         if (seed) {
           hasChallengeLink = true;
           currentSeed = parseInt(seed);
-          
+           
           // Set difficulty
           if (sizeParam === "hard") {
             gameSettings.difficulty = "hard";
@@ -1064,12 +1069,12 @@
           generateMazeWithSeed(currentSeed);
           placePlayerAndEndSeeded(currentSeed);
           visitedCells.clear();
-          
+           
           return true;
         }
         return false;
       }
-      
+       
       // Call this before username logic
       const hasChallenge = parseChallengeLinkParameters();
       if (!hasChallenge) {
@@ -1569,7 +1574,7 @@
       /* Continuous movement loop - smooth hold-to-move gameplay */
       let lastMoveTime = 0;
       const moveDelay = 120; // milliseconds between moves when holding
-      
+       
       function attemptMove(dirKey) {
         // Called from game loop when key is held
         if (replayMode || gameWon) return false;
@@ -1604,7 +1609,7 @@
         playSound("wall");
         return false;
       }
-      
+       
       function gameLoopTick() {
         // Run continuous movement check
         if (!startTime || replayMode || gameWon) return;
@@ -1623,9 +1628,9 @@
           if (attemptMove("d")) lastMoveTime = now_time;
         }
       }
-      
+       
       setInterval(gameLoopTick, 30); // Run game loop ~33fps
-      
+       
       document.addEventListener("keydown", (e) => {
         // Player movement: avoid replay/win/input states
         if (replayMode || gameWon) return;
@@ -2457,6 +2462,7 @@
           generateDailyChallenge();
           renderMaze();
           moves = [];
+          const DailyBtn = "You have clicked the daily button"
           gameWon = false;
           replayMode = false;
           resetStopwatch();
@@ -2525,9 +2531,78 @@
         document.body.appendChild(modal);
       }
 
+      /* ---------- MULTIPLAYER DIALOG (ADDED FEATURE) ---------- */
+      /* ---------- UPDATED MULTIPLAYER DIALOG ---------- */
+      /* ---------- UPDATED MULTIPLAYER DIALOG (Direct Connect) ---------- */
+function showMultiplayerModal() {
+  const modal = document.createElement("div");
+  Object.assign(modal.style, {
+      position: "fixed", inset: "0", display: "flex", 
+      justifyContent: "center", alignItems: "center", 
+      background: "rgba(0,0,0,0.85)", zIndex: "50002"
+  });
+
+  const content = document.createElement("div");
+  Object.assign(content.style, {
+      background: "rgba(40, 40, 50, 0.95)", borderRadius: "16px",
+      padding: "30px", maxWidth: "450px", color: "#fff",
+      boxShadow: "0 20px 60px rgba(0,0,0,0.8)", textAlign: "center"
+  });
+
+  const title = document.createElement("h3");
+  title.innerHTML = '<i class="bi bi-globe"></i> Multiplayer';
+  title.style.color = "#00d4ff"; 
+  
+  const desc = document.createElement("p");
+  desc.textContent = "Enter a SuperMaze Server URL to join:";
+  desc.style.color = "#ccc";
+
+  const inputGroup = document.createElement("div");
+  inputGroup.className = "input-group mb-3";
+  
+  const input = document.createElement("input");
+  input.className = "form-control bg-dark text-white border-secondary";
+  input.placeholder = "https://example.com/play";
+  input.id = "server-url-input";
+  
+  const connectBtn = document.createElement("button");
+  connectBtn.className = "btn btn-success";
+  connectBtn.innerHTML = 'Connect <i class="bi bi-box-arrow-in-right"></i>';
+  
+  // --- DIRECT REDIRECT LOGIC ---
+  connectBtn.onclick = () => {
+      const url = input.value.trim();
+      if (!url) return alert("Please enter a URL!");
+      
+      // Basic check to ensure it starts with http/https
+      let targetUrl = url;
+      if (!/^https?:\/\//i.test(url)) {
+          targetUrl = 'https://' + url;
+      }
+
+      window.location.href = targetUrl;
+  };
+
+  inputGroup.append(input, connectBtn);
+
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "btn btn-secondary w-100";
+  closeBtn.textContent = "Cancel";
+  closeBtn.onclick = () => modal.remove();
+
+  content.append(title, desc, inputGroup, closeBtn);
+  modal.appendChild(content);
+  document.body.appendChild(modal);
+}
+
       /* Button event handlers */
       singleBtn.onclick = () => {
         showMazeImportDialog();
+      };
+
+      // Added Multiplayer handler
+      multiplayerBtn.onclick = () => {
+        showMultiplayerModal();
       };
 
       replayListBtn.onclick = () => {
@@ -2555,7 +2630,6 @@
       logoutBtn.onclick = logout;
     </script>
 
-    <!-- jQuery-like Utility Library -->
     <script class="jquery-code">
       /* ========== INSANE JQUERY-LIKE UTILITIES ========== */
 
@@ -2901,8 +2975,8 @@
               e.addEventListener("mouseleave", leaveHandler || (() => {}));
             });
           } else {
-            el.addEventListener("mouseenter", enterHandler);
-            el.addEventListener("mouseleave", leaveHandler || (() => {}));
+            e.addEventListener("mouseenter", enterHandler);
+            e.addEventListener("mouseleave", leaveHandler || (() => {}));
           }
           return el;
         },

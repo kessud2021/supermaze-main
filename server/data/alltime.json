@@ -1,0 +1,17 @@
+[
+  {
+    "id": "0c9a62a7-86ba-49ac-84f4-10ade5932682",
+    "username": "KessudMC",
+    "token": "832c649d-030e-4479-8d4f-9cbfe95aa6a0",
+    "joined": 1768597294339,
+    "stats": {
+      "wins": 0
+    }
+  },
+  {
+    "username": "Test",
+    "token": "26a8ee02-cd11-49b2-826b-7032a9a6bb11",
+    "joined": "2026-01-17T13:22:12.738Z",
+    "banned": false
+  }
+]
